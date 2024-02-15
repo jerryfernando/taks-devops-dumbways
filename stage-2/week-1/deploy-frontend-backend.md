@@ -149,6 +149,8 @@ CREATE USER 'jeri'@'%' IDENTIFIED BY 'jeri777!'
 ```
 berikan privileges
 ![292938792-88c87fe9-6fd8-4be6-aa51-530b15fc2c3b](https://github.com/jerryfernando/taks-devops-dumbways/assets/23428256/e5797f9a-1ed4-42f7-9e85-e978d7b7802e)
+
+
 lalu masuk ke user jeri lihat sudah masuk atau belumnya databasenya
 ![292938803-5ec90aeb-cdcf-457b-b4c4-0edc6b6fc78b](https://github.com/jerryfernando/taks-devops-dumbways/assets/23428256/4321aee0-bc7f-49e0-bf1d-17a4b29d1571)
 
