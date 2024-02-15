@@ -220,13 +220,11 @@ npx sequelize db:migrate
 ```
 pm2 start
 ```
-![292940853-dd4318ea-bdcc-4743-9a4e-32042243b48c](https://github.com/jerryfernando/taks-devops-dumbways/assets/23428256/b9b9d7b5-f694-431d-ba9b-4772496eaa7a)
+lalu cek akses web
 
-![Screenshot_64](https://github.com/wilsonakbar/devops18-dumbways-WilsonAkbar/assets/132327628/ccaf3680-34eb-4038-9ad4-830ebfe6aec5)
-registrasi user pada fontend wayshub
-![Screenshot_65](https://github.com/wilsonakbar/devops18-dumbways-WilsonAkbar/assets/132327628/03cc8131-b31d-4c89-b128-9d4850280522)
-registrasi user berhasil
-![Screenshot_66](https://github.com/wilsonakbar/devops18-dumbways-WilsonAkbar/assets/132327628/b910cbbe-8ba4-43af-88a7-b93340508c36)
-test login menggunakan user yang telah di buat
-![Screenshot_67](https://github.com/wilsonakbar/devops18-dumbways-WilsonAkbar/assets/132327628/9a5d3a58-0209-4e38-aa67-3cdcf3fa9515)
-sukses masuk dengan user yang telah di buat
+![269735411-03cc8131-b31d-4c89-b128-9d4850280522](https://github.com/jerryfernando/taks-devops-dumbways/assets/23428256/d3e540f8-a8e3-4226-bd96-8d01200cd4ed)
+
+![274363839-958add41-4048-44de-a575-a4cfec1daec6](https://github.com/jerryfernando/taks-devops-dumbways/assets/23428256/89af6491-6ffe-4d90-af68-5d29c87fb54a)
+![269735440-9a5d3a58-0209-4e38-aa67-3cdcf3fa9515](https://github.com/jerryfernando/taks-devops-dumbways/assets/23428256/7e3c3141-5e13-41c0-93db-814b797a6e45)
+
+
