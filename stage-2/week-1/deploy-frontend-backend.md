@@ -145,7 +145,7 @@ nano config.json
 
 pada bagian ini ganti username password sesuai user yang sudah kita buat dan berikan nama database nya
 ### 5.2 menggabungkan konfigurasi database yang kita buat
-
+```
 cd wayshub-backend/
 ```
 ```
