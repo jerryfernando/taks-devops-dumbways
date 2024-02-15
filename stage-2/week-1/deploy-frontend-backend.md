@@ -20,7 +20,7 @@ git clone https://github.com/dumbwaysdev/wayshub-frontend
 git clone https://github.com/dumbwaysdev/wayshub-backend
 ```
 # frontend
-
+```
 npm install -g pm2
 ```
 ### 2.3 deploy aplikasinya menggunakan PM2
