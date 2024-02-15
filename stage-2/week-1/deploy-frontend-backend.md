@@ -220,6 +220,8 @@ npx sequelize db:migrate
 ```
 pm2 start
 ```
+![292940853-dd4318ea-bdcc-4743-9a4e-32042243b48c](https://github.com/jerryfernando/taks-devops-dumbways/assets/23428256/b9b9d7b5-f694-431d-ba9b-4772496eaa7a)
+
 ![Screenshot_64](https://github.com/wilsonakbar/devops18-dumbways-WilsonAkbar/assets/132327628/ccaf3680-34eb-4038-9ad4-830ebfe6aec5)
 registrasi user pada fontend wayshub
 ![Screenshot_65](https://github.com/wilsonakbar/devops18-dumbways-WilsonAkbar/assets/132327628/03cc8131-b31d-4c89-b128-9d4850280522)
