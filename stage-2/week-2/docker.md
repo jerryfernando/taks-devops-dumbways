@@ -1,6 +1,8 @@
 # docker
 # 1 install docker
+```
 sudo nano docker_install.sh
+```
 copy paste dibawah ke file docker_install.sh
 ```
 #!/bin/bash
@@ -30,7 +32,9 @@ sudo systemctl status docker
 ```
 ctrl x y enter
 lalu ketik perintah dibawah
-
+```
 sudo chmod +x docker_install.sh
-
+```
+```
 ./docker_install.sh
+```
