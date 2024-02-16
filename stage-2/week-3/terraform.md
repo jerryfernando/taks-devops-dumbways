@@ -49,44 +49,52 @@ sudo chmod +x install_awscli.sh
 ```
 
 #### 1.3 Konfigurasi Access Keys
-<img width="1440" alt="Screenshot 2023-10-07 at 14 05 30" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/bbdb3471-788d-4e56-bb1b-5899c23d969b">
+### remote aws ke lokal
+create aws IAM
+![create iam](https://github.com/jerryfernando/Final-task/assets/23428256/b8f996c9-48ae-4d0e-8476-c725a6286a36)
+![security](https://github.com/jerryfernando/Final-task/assets/23428256/be4bc2ed-6921-4da4-9e79-0873d73413d0)
 
-Pertama, kita masuk ke Console AWS-nya. Lalu kita klik nama profile kita pada ujung kanan setelah itu akan muncul menu dropdown lalu pilih *Security credentials*
-<br>
-<br>
+create access-key dan secret-access-key
+![create access key](https://github.com/jerryfernando/Final-task/assets/23428256/7742d74c-8c91-4509-9e4a-c4f934baf7f0)
+![attach policies](https://github.com/jerryfernando/Final-task/assets/23428256/b2343df5-0557-4fe1-bd24-8693facb2e53)
+![pilih cli](https://github.com/jerryfernando/Final-task/assets/23428256/e7d62350-7728-43b7-b75e-a70ea7aa19a4)
+![access keys](https://github.com/jerryfernando/Final-task/assets/23428256/7e87c167-d2b7-49a4-8730-8ecc695b65aa)
 
-<img width="1440" alt="Screenshot 2023-10-07 at 14 05 54" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/757bf0c4-a4c0-463d-a5be-ff894990fa0d">
-
-Setelah itu scroll kebawah hingga menemukan *Access keys* setelah itu klik *Create access key*
-<br>
-<br>
-
-<img width="1440" alt="Screenshot 2023-10-07 at 14 06 06" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/ed169c23-7a86-4f97-a029-8cdc29644425">
-
-*Access keys* yang sudah terbuat disimpan untuk kita gunakan konfigurasi environment AWS-nya
-
-#### 1.4 Membuat Infrastruktur AWS menggunakan Terraform
- <img width="1440" alt="Screenshot 2023-10-07 at 14 07 03" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/0f7d3aa1-f99c-4a2f-a532-c9423e494a4a">
-
-Pertama kita konfigurasi Access Keys yang sudah kita buat tadi agar Terraform memiliki akses untuk membuat Resources di AWS dengan menjalankan perintah:
-
-```terraform
-aws configure
+create permissions
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowS3Access",
+            "Effect": "Allow",
+            "Action": "s3:*",
+            "Resource": "*"
+        }
+    ]
+}
 ```
 
-Dengan spesifikasi sebagai berikut:
+![permmisions](https://github.com/jerryfernando/Final-task/assets/23428256/28883c4a-c97f-4c88-b353-ed84cf4499e4)
 
-> AWS Access Key ID: (access-key)
->
-> AWS Secret Access Key: (secret-access-key)
->
-> Default region name: ap-southeast-1 (Singapore)
-> 
-> Default output format: (blank)
+```bash
 
-Lalu saya buat folder pada home bernamakan `terraform-aws` setelah saya membuat file bernama `main.tf` lalu saya isikan script berikut:
+  aws configure
+```
+```
+AWS Access Key ID [None]: 
+AWS Secret Access Key [None]: 
+Default region name [None]: 
+Default output format [None]:
+```
 
-```terraform
+![aws configure](https://github.com/jerryfernando/Final-task/assets/23428256/a6a7863a-2a60-4c6a-9861-86bc8f22a6b2)
+
+aws ec2 describe-instances
+
+
+buat folder `terraform-aws` lalu buat sudo nano/vim `main.tf` 
+```
 terraform {
   required_providers {
     aws = {
@@ -102,58 +110,51 @@ provider "aws" {
   region  = "ap-southeast-1"
 }
 
-resource "aws_instance" "app_server" {
-  ami           = "ami-002843b0a9e09324a"
-  instance_type = "t2.micro"
+resource "aws_vpc" "main" {
+  cidr_block = "10.5.0.0/16"
 
   tags = {
-    Name = "ec2-as1-1a-d-terraform"
+      Name = "tuts vpc"
+  }
+}
+
+resource "aws_subnet" "web" {
+    vpc_id = aws_vpc.main.id
+    cidr_block = "10.5.0.0/16"
+
+    tags = {
+        Name = "web-subnet"
+    }
+}
+
+resource "aws_instance" "jeri" {
+  ami           = "ami-002843b0a9e09324a"
+  instance_type = "t2.micro"
+  availability_zone = "ap-southeast-1b"
+  associate_public_ip_address = true
+
+  tags = {
+    Name = "terraform"
   }
 }
 ```
 
-Dari script diatas saya melakukan beberapa penyesuaian dengan merubah beberapa parameter, dan berikut parameter yang saya ubah:
+setelah itu buat sudo nano/vim `terraform_command.sh` lalu jalankan
+```
+#!/usr/bin/env bash
 
-> region = "ap-southeast-1" (Singapore)
-> 
-> ami = "ami-002843b0a9e09324a" (Ubuntu 20.04)
->
-> Name = "ec2-as1-1b-d-terraform"
-
-Setelah file ter-save, Saya meng-inisialisasi direktori yang terdapat script seperti diatas dengan menjalankan perintah:
-
-```terraform
 terraform init
-```
-
-<img width="1440" alt="Screenshot 2023-10-07 at 14 16 24" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/7219e9af-a9ee-4c20-b377-cf827a1ced2c">
-
-Lalu saya mem-verifikasi apakah script konfigurasi Terraform-nya sudah benar dengan menjalankan perintah:
-
-```terraform
+terraform plan
 terraform validate
-```
-
-Jika konfigurasi benar maka akan muncul keterangan valid seperti gambar diatas
-<br>
-
-<img width="1440" alt="Screenshot 2023-10-07 at 14 16 38" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/8bc7eae1-a213-4f82-8d0c-a483bb9ec822">
-
-Lalu saya terapkan script konfigurasi Terraform yang sudah saya buat dengan menjalankan perintah:
-
-```terraform
 terraform apply
 ```
+sudo chmod +x terraform_command.sh
+./terraform_command.sh
 
-<img width="1440" alt="Screenshot 2023-10-07 at 14 16 48" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/c87b354f-9d67-43d2-bd25-ba74edd0066d">
+hasil 
 
-Disini ketikan `yes`
-<br>
+![hasil1](https://github.com/jerryfernando/Final-task/assets/23428256/cfa5fd55-f526-446a-a991-c220fed9099c)
 
-<img width="1440" alt="Screenshot 2023-10-07 at 14 17 38" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/63cea694-3434-4cd8-8ae4-0b69c7b8596d">
-<img width="1440" alt="Screenshot 2023-10-07 at 14 19 26" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/bd8c6e00-40c7-4960-80d5-5d7331b5692e">
-
-Berikut bukti bahwa pembuatan infrastruktur AWS menggunakan Terraform dapat berjalan dengan baik
 
 ### 2. Buatlah Terraform untuk men-deploy Docker Image wayshub-fe & Praktekkan penggunaan Terraform dari pembuatan hingga Resource di hancurkan
 
