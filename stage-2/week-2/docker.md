@@ -38,3 +38,27 @@ sudo chmod +x docker_install.sh
 ```
 ./docker_install.sh
 ```
+
+buat docker file di app fe dan be
+
+```
+sudo nano Dockerfile
+```
+multistage fe
+```
+FROM node:16 AS build-env
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+RUN npm install -g serve
+COPY . /app
+RUN npm run build --production
+
+FROM node:16.20.2-alpine3.18
+COPY --from=build-env /app /app
+WORKDIR /app
+EXPOSE 3000
+CMD npx serve -s build
+```
+
+multistage be
