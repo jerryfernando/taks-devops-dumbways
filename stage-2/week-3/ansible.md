@@ -18,71 +18,143 @@ sudo chmod +x install_ansible.sh
 ```
 ./install_ansible.sh
 ```
-#### 2. Membuat file yang dibutuhkan untuk menjalankan Ansible-Playbook
+## Membuat file yang dibutuhkan untuk menjalankan Ansible-Playbook
 
-Lalu setelah itu saya membuat direktori bernamakan `ansible` lalu di dalamnya terdapat file yang berisikan `ansible.cfg`, `Inventory`, `adduser.yml`, `docker.yml`, `docker-compose.yml`, `wayshub-fe.yml`, `nginx.yml`,  . Berikut isi script dari file file tersebut
-
-- Inventory
-
-```ansible
+sudo nano/vim Inventory
+Inventory
+```bash
 [appserver]
-103.175.218.224
+103.127.97.172
 
 [gateway]
-103.175.217.130
+103.127.97.222
 
 [all:vars]
 ansible_connection=ssh
 ansible_port=22
-ansible_user="calvin"
+ansible_user="jeri77"
 ansible_python_interpreter=/usr/bin/python3.8
 ```
+atau untuk 3 server atau lebih bisa gunankan ini 
+```
+[appserver]
+appserver ansible_host=103.127.97.172 ansible_user=jeri77
 
-- ansible.cfg
+[gateway]
+gateway ansible_host=103.127.97.222 ansible_user=jeri77
 
-```ansible
+[registry]
+registry ansible_host=103.183.75.220 ansible_user=registry-jerry
+
+[all:vars]
+ansible_connection=ssh
+ansible_port=22
+ansible_python_interpreter=/usr/bin/python3
+```
+
+sudo nano/vim ansible.cfg
+ansible.cfg
+```bash
 [defaults]
 inventory = Inventory
-private_key_file = /home/ubuntu/.ssh/id_rsa
+private_key_file = /home/jeri77/.ssh/id_rsa
 host_key_checking  = False
 timeout = 10
 remote_port = 22
 interpreter_python = auto_silent
+
+[ssh_connection]
+ssh_args = -o ForwardAgent=yes
 ```
 
-- adduser.yml
+Attach SSH key & ip configuration to all server
 
-```ansible
+sudo nano/vim ssh.yml
+```
 ---
 - become: true
   gather_facts: false
   hosts: all
-  vars:
-    - user: calvin2
-    - passwd: $5$rgdh8Kfr5ZmRr7m4$TMzhvPQ4ml9D1uxB5eBlaF4CbL7KKtEwrRO/ubMqtfC
   tasks:
-    - name: Creating User
-      ansible.builtin.user:
-        append: true
-        groups: sudo
-        name: "{{user}}"
-        password: "{{passwd}}"
-        home: /home/({user})
-        state: present
-        system: true
-        generate_ssh_key: true
-        ssh_key_file: .ssh/calvin2
+    - name: Copy SSH Private Keys
+      copy:
+        src: /home/jeri77/.ssh/id_rsa
+        dest: /home/jeri77/.ssh
+
+    - name: Copy SSH Pubic Keys
+      copy:
+        src: /home/jeri77/.ssh/id_rsa.pub
+        dest: /home/jeri77/.ssh
+
+    - name: Copy SSH authorized_keys
+      copy:
+        src: /home/jeri77/.ssh/authorized_keys
+        dest: /home/jeri77/.ssh
+    
+
+```
+atau untuk 3 server code seperti dibawah ini
+```
+---
+- hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Copy SSH Private Key to registry-jerry's home directory
+      copy:
+        src: /home/jeri77/.ssh/id_rsa
+        dest: /home/registry-jerry/.ssh/id_rsa
+        owner: registry-jerry
+        group: registry-jerry
+        mode: '0600'
+
+    - name: Copy SSH Public Key to registry-jerry's home directory
+      copy:
+        src: /home/jeri77/.ssh/id_rsa.pub
+        dest: /home/registry-jerry/.ssh/id_rsa.pub
+        owner: registry-jerry
+        group: registry-jerry
+        mode: '0644'
+
+    - name: Copy SSH Private Key to jeri77's home directory
+      copy:
+        src: /home/jeri77/.ssh/id_rsa
+        dest: /home/jeri77/.ssh/id_rsa
+        owner: jeri77
+        group: jeri77
+        mode: '0600'
+
+    - name: Copy SSH Public Key to jeri77's home directory
+      copy:
+        src: /home/jeri77/.ssh/id_rsa.pub
+        dest: /home/jeri77/.ssh/id_rsa.pub
+        owner: jeri77
+        group: jeri77
+        mode: '0644'
 ```
 
-- docker.yml
 
-```ansible
+
+
+[All server]
+
+- Docker engine
+- node exporter
+
+sudo nano/vim docker.yml
+```bash
 ---
 - become: true
   hosts: all
   gather_facts: false
   tasks:
-    - name: Install Prerequisite
+    - name: Install Aptitude
+      apt:
+        name: aptitude
+        state: latest
+        update_cache: true
+
+    - name: Install Docker Dependencies
       apt:
         update_cache: yes
         name:
@@ -94,12 +166,17 @@ interpreter_python = auto_silent
           - python3-pip
           - python3-venv
           - python3-docker
+          - python3-apt
+          - lsb-release
+
     - name: Add Docker GPG Key
       apt_key:
         url: https://download.docker.com/linux/ubuntu/gpg
+
     - name: Add Docker Repository
       apt_repository:
         repo: deb https://download.docker.com/linux/ubuntu focal stable
+
     - name: Install Docker Engine
       apt:
         update_cache: true
@@ -107,211 +184,262 @@ interpreter_python = auto_silent
           - docker-ce
           - docker-ce-cli
           - docker-buildx-plugin
+
     - name: Add User Docker Group
       user:
-        name: calvin
+        name: jeri77
         groups: docker
         append: yes
 ```
 
-- docker-compose.yml
-
-```ansible
-version: "3.8"
-services:
-   frontend:
-    container_name: wayshub-fe
-    image: calvinnr/wayshub-fe:latest
-    stdin_open: true
-    ports:
-      - 3000:3000
+sudo nano/vim node-exporter.yml
+```
+---
+- become: true
+  gather_facts: false
+  hosts: all
+  tasks:
+    - name: Install Node-Exporter
+      community.docker.docker_container:
+        name: node-exporter
+        image: prom/node-exporter
+        ports:
+          - 9100:9100
+        restart_policy: unless-stopped
 ```
 
-- wayshub-fe.yml
 
-```ansible
+
+[Appserver]
+
+- git repo
+- prometheus & grafana
+
+sudo nano/vim git-repo.yml
+
+```bash
+---
+- hosts: appserver
+  gather_facts: no
+
+  tasks:
+    - name: Clone Frontend Repository
+      git:
+        clone: yes
+        repo: git@github.com:demo-dumbways/fe-dumbmerch.git
+        version: master
+        dest: /home/jeri77/fe-dumbmerch
+        accept_hostkey: yes
+        key_file: /home/jeri77/.ssh/id_rsa
+      become: yes
+
+    - name: Clone Backend Repository
+      git:
+        clone: yes
+        repo: git@github.com:demo-dumbways/be-dumbmerch.git
+        version: master
+        dest: /home/jeri77/be-dumbmerch
+        accept_hostkey: yes
+        key_file: /home/jeri77/.ssh/id_rsa
+      become: yes
+```
+sudo nano/vim prometheus.yml
+```
+---
 - become: true
   gather_facts: false
   hosts: appserver
   tasks:
-    - name: Pull Image from Docker Hub
-      docker_image:
-       name: calvinnr/wayshub-fe:latest
-       source: pull
-    - name: Copy Docker Compose File to Gateway
+    - name: Create Prometheus.yml
       copy:
-        src: /home/ubuntu/ansible/docker-compose.yml
-        dest: /home/calvin
-    - name: Run Docker Compose
-      command: docker compose up -d
+        dest: /home/jeri77/prometheus.yml
+        content: |
+          scrape_configs:
+            - job_name: capstone
+              scrape_interval: 5s
+              static_configs:
+              - targets:
+                - ne-appserver.jerry.studentdumbways.my.id
+                - ne-gateway.jerry.studentdumbways.my.id
+
+    - name: Running Prometheus on Top Docker
+      community.docker.docker_container:
+        name: prometheus
+        image: prom/prometheus
+        ports:
+          - 9090:9090
+        restart_policy: unless-stopped
+        volumes:
+          - /home/jeri77/prometheus.yml:/etc/prometheus/prometheus.yml
+```
+sudo nano/vim grafana.yml
 ```
 
-- nginx.yml
+---
+- become: true
+  gather_facts: false
+  hosts: appserver
+  tasks:
+    - name: Set Permission
+      ansible.builtin.file:
+        path: ~/grafana
+        state: directory
+        mode: "0755"
 
-```ansible
+    - name: Set Up Grafana
+      community.docker.docker_container:
+        name: grafana
+        image: grafana/grafana
+        ports:
+          - 13000:3000
+        restart_policy: unless-stopped
+        volumes:
+          - ~/grafana:/var/lib/grafana
+        user: root
+```
+
+
+[gateway]
+
+- firewall
+- nginx
+- reverse proxy
+- ssl certificate
+
+sudo nano/vim firewall.yml
+
+```bash
 ---
 - become: true
   gather_facts: false
   hosts: gateway
   tasks:
-    - name: Installing NGINX
+    - name: Install UFW
+      apt:
+        name: ufw
+        update_cache: yes
+        state: latest
+
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+        policy: allow
+
+    - name: UFW Allow Rules
+      community.general.ufw:
+        rule: allow
+        proto: tcp
+        port: "{{ item }}"
+      with_items:
+      - 22
+      - 80
+      - 443
+      - 3000
+      - 5000
+      - 5432
+      - 3306
+      - 9090
+      - 9100
+      - 8080
+      - 13000
+    - name: enable ufw
+      community.general.ufw:
+        state: reloaded
+        policy: allow
+```
+buat file  di home/jer77/ansible/rporxy.conf
+```
+---
+
+            server {
+               server_name jerry.studentdumbways.my.id;
+               location / {
+               proxy_pass http://103.127.97.172:3000;
+               }
+            }
+            server {
+               server_name exporter-appserver.jerry.studentdumbways.my.id;
+               location / {
+               proxy_pass http://103.127.97.172:9100;
+               }
+            }
+            server {
+               server_name exporter-gateway.jerry.studentdumbways.my.id;
+               location / {
+               proxy_pass http://103.127.97.222:9100;
+               }
+            }
+            server {
+               server_name prometheus.jerry.studentdumbways.my.id;
+               location / {
+               proxy_pass http://103.127.97.172:9090;
+               }
+            }
+            server {
+               server_name monitoring.jerry.studentdumbways.my.id;
+               location / {
+               proxy_set_header Host monitoring.jeri.studentdumbways.my.id;
+               proxy_pass http://103.127.97.172:13000;
+               }
+            }
+            server {
+               server_name api.jerry.studentdumbways.my.id;
+               location / {
+               proxy_pass http://103.127.97.172:5000;
+               }
+            }
+            server {
+               server_name registry.jerry.studentdumbways.my.id;
+               location / {
+               proxy_pass http://103.183.75.220:5000;
+               }
+            }
+            server {
+               server_name jenkins.jerry.studentdumbways.my.id;
+               location / {
+               proxy_pass http://103.127.97.222:8080;
+               }
+            }
+
+```
+sudo nano/vim nginx.yml
+```
+---
+- become: true
+  gather_facts: false
+  hosts: gateway
+  tasks:
+    - name: "Installing nginx"
       apt:
         name: nginx
-        state: present
-        update_cache: no
-    - name: Copy rproxy.conf
+        state: latest
+        update_cache: yes
+    - name: start nginx
+      service:
+        name: nginx
+        state: started
+    - name: copy proxy.conf
       copy:
-        src: /home/ubuntu/ansible/rproxy.conf
-        dest: /etc/nginx/sites-enabled
-    - name: Reload NGINX
+        src: /home/irwan/ansible/rproxy.conf
+        dest: /etc/nginx/sites-enabled/
+    - name: Install Certbot
+      community.general.snap:
+        name: certbot
+        classic: yes
+    - name: Obtain and install SSL certificate with Certbot Nginx fe
+      command: certbot --nginx -d jerry.studentdumbways.my.id --non-interactive --agree-tos --email jerifernando88@gmail.com
+    - name: Obtain and install SSL certificate with Certbot Nginx be
+      command: certbot --nginx -d api.jerry.studentdumbways.my.id --non-interactive --agree-tos --email jerifernando88@gmail.com
+    - name: Obtain and install SSL certificate with Certbot Nginx exporterapp
+      command: certbot --nginx -d exporter-appserver.studentdumbways.my.id --non-interactive --agree-tos --email jerifernando88@gmail.com
+    - name: Obtain and install SSL certificate with Certbot Nginx exportergate
+      command: certbot --nginx -d exporter-gateway.studentdumbways.my.id --non-interactive --agree-tos --email jerifernando88@gmail.com
+    - name: Obtain and install SSL certificate with Certbot Nginx Prometheus
+      command: certbot --nginx -d prometheus.jerry.studentdumbways.my.id --non-interactive --agree-tos --email jerifernando88@gmail.com
+    - name: Obtain and install SSL certificate with Certbot Nginx grafana
+      command: certbot --nginx -d monitoring-jerry.studentdumbways.my.id --non-interactive --agree-tos --email jerifernando88@gmail.com
+    - name: reloaded nginx
       service:
         name: nginx
         state: reloaded
 ```
-
-- rproxy.conf
-
-```ansible
-server {
-    server_name calvin.studentdumbways.my.id;
-    location / {
-    proxy_pass http://103.175.218.224:3000;
-    }
-}
-server {
-    server_name ne-appserver.calvin.studentdumbways.my.id;
-    location / {
-    proxy_pass http://103.175.218.224:9100;
-    }
-}
-server {
-    server_name ne-gateway.calvin.studentdumbways.my.id;
-    location / {
-    proxy_pass http://103.175.217.130:9100;
-    }
-}
-server {
-    server_name prometheus.calvin.studentdumbways.my.id;
-    location / {
-    proxy_pass http://103.175.218.224:9090;
-    }
-}
-server {
-    server_name dashboard.calvin.studentdumbways.my.id;
-    location / {
-    proxy_set_header Host dashboard.calvin.studentdumbways.my.id;
-    proxy_pass http://103.175.218.224:13000;
-    }
-}
-```
-
-- grafana.yml
-
-```ansible
-- become: true
-  gather_facts: false
-  hosts: appserver
-  tasks:
-    - name: Run Docker Grafana
-      command: docker run -d --name=grafana -p 13000:3000 grafana/grafana
-```
-
-- prometheus.yml
-
-```ansible
-global:
-  scrape_interval:     10s
-# A scrape configuration containing exactly one endpoint to scrape:
-# Here it's Prometheus itself.
-scrape_configs:
-  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
-  - job_name: 'appserver'
-
-    # Override the global default and scrape targets from this job every 5 seconds.
-    scrape_interval: 5s
-
-    static_configs:
-      - targets: ['ne-appserver.calvin.studentdumbways.my.id','ne-gateway.calvin.studentdumbways.my.id']
-```
-
-- prom.yml
-
-```ansible
-- become: true
-  gather_facts: false
-  hosts: appserver
-  tasks:
-    - name: Making Directory Monitoring
-      command: mkdir monitoring
-    - name: Copy Prometheus Configuration
-      copy:
-       src: /home/ubuntu/ansible/prometheus.yml
-       dest: /home/calvin/monitoring
-    - name: Run Docker Prometheus
-      command: docker run -d -p 9090:9090 --name prometheus \ -v /home/calvin/monitoring/prometheus.yml:/opt/bitnami/prometheus/conf/prometheus.yml \ bitnami/prometheus:latest
-```
-
-- node-exporter.yml
-
-```ansible
-- become: true
-  gather_facts: false
-  hosts: all
-  tasks:
-    - name: Run Node-Exporter
-      command: docker run -d -p 9100:9100 --name node-exporter bitnami/node-exporter:latest
-```
-
-#### 3. Hasil Ansible-Playbook
-
-Berikut Hasil dari `adduser.yml`, `docker.yml`, `wayshub-fe.yml`, `nginx.yml`
-
-<img width="1440" alt="Screenshot 2023-10-09 at 00 51 19" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/1e412e83-c811-49c7-bb77-6d908d81fded">
-
-> adduser.yml
-
-<img width="1440" alt="Screenshot 2023-10-09 at 01 58 19" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/6a9b55dc-bd38-44b2-b7f2-ae28092e8409">
-
-> docker.yml
-
-<img width="1440" alt="Screenshot 2023-10-09 at 02 39 04" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/f14bbd79-3a2a-4d67-baeb-19fbb16ea85d">
-
-> wayshub-fe.yml
-
-<img width="1440" alt="Screenshot 2023-10-09 at 03 31 41" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/c82ea113-d36a-433c-b0e0-47bad27f44dd">
-
-> nginx.yml
-
-<img width="1440" alt="Screenshot 2023-10-09 at 03 32 23" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/150045d0-814e-4032-8e6c-5c8a6d7d6178">
-
-> node-exporter.yml
-
-<img width="1440" alt="Screenshot 2023-10-09 at 04 07 56" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/0e527cdb-e56c-44ec-9992-c45acaedeecd">
-
-> prom.yml
-
-<img width="1440" alt="Screenshot 2023-10-09 at 04 16 26" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/94f7e6de-0a70-4e89-82f0-886140c5aa7d">
-
-> grafana.yml
-
-#### 4. Hasil Deploy On Top Docker
-
-<img width="1440" alt="Screenshot 2023-10-09 at 02 39 25" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/5a5dc78a-e4f2-4ad5-be88-0dd51761300d">
-
-> Wayshub-Frontend
-
-<img width="1440" alt="Screenshot 2023-10-09 at 04 20 14" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/522f154d-0180-4433-a258-93c3382c3b74">
-
-> Node-Exporter Appserver
-
-<img width="1440" alt="Screenshot 2023-10-09 at 04 20 25" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/ab811f3f-f43a-4d56-a57c-4d523f501888">
-
-> Node-Exporter Gateway
-
-<img width="1440" alt="Screenshot 2023-10-09 at 04 17 04" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/2fb6cf48-d779-48ee-8ca3-ae95e33d4185">
-
-> Prometheus
-
-<img width="1440" alt="Screenshot 2023-10-09 at 04 17 44" src="https://github.com/calvinnr/devops18-dw-calvinnr/assets/101310300/51f9b40d-c9e1-4cf6-887c-359f22cb8ad6">
-
-> Grafana
